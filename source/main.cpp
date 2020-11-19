@@ -12,9 +12,19 @@
 #include "parseTemps.h"
 
 using namespace std;
+/**
+ * The int main(int argc, char *argv[]) function is provided by Professor Kennedy from Old Dominion University's Computer Science Department.
+ * 
+ * All other code:
+ * Written By: Paul Rodriguez
+ * Due Date: 11/20/2020
+ * Course: CS 517
+ * Name: Semester Project
+ */
 
 vector<string> outputFileNameGen(string, int);
 vector<double> coreTempContainer(int, std::vector<CoreTempReading>);
+void acbMethod(std::vector<CoreTempReading>);
 void display();
 //------------------------------------------------------------------------------
 int main(int argc, char *argv[])
@@ -40,12 +50,14 @@ int main(int argc, char *argv[])
     // auto readings = parse_raw_temps<std::list<CoreTempReading>>(input_temps);
 
     int coreCount = readings[0].second.size();
-    outputFileNameGen(inputFileName ,coreCount);
+    //outputFileNameGen(inputFileName ,coreCount);
 
     for(int i = 0; i < coreCount; i++)
     {
         coreTempContainer(i, readings);
     }
+    outputFileNameGen(inputFileName ,coreCount);
+
     /*
     // Output everything to match the Python version
     for (const CoreTempReading& theReading : readings) 
@@ -104,6 +116,10 @@ vector<double> coreTempContainer(int coreNumber, std::vector<CoreTempReading> re
     }
 
     return coreTemps;
+}
+void acbMethod(std::vector<CoreTempReading> readings)
+{
+
 }
 void display()
 {
