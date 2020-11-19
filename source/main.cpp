@@ -22,10 +22,9 @@ using namespace std;
  * Name: Semester Project
  */
 
-vector<string> outputFileNameGen(string, int);
+void outputToFile(std::string, std::vector<double>&);
+std::string outputFileNameGen(string, int);
 vector<double> coreTempContainer(int, std::vector<CoreTempReading>);
-void acbMethod(std::vector<CoreTempReading>);
-void display();
 //------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
@@ -34,7 +33,7 @@ int main(int argc, char *argv[])
         cout << "Usage: " << argv[0] << " input_file_name" << "\n";
         return 1;
     }
-
+    
     ifstream input_temps(argv[1]);
     if (!input_temps) {
         cout << "ERROR: " << argv[1] << " could not be opened" << "\n";
@@ -46,17 +45,17 @@ int main(int argc, char *argv[])
     // vector
     auto readings = parse_raw_temps<std::vector<CoreTempReading>>(input_temps);
     
-    // list
-    // auto readings = parse_raw_temps<std::list<CoreTempReading>>(input_temps);
-
     int coreCount = readings[0].second.size();
-    //outputFileNameGen(inputFileName ,coreCount);
+    vector<string> outputFileNames;
+    vector<double> coreTemps;
 
     for(int i = 0; i < coreCount; i++)
     {
-        coreTempContainer(i, readings);
+        std::string outputFileName = outputFileNameGen(inputFileName ,i);
+        coreTemps = coreTempContainer(i, readings);
+        outputToFile(outputFileName, coreTemps);
     }
-    outputFileNameGen(inputFileName ,coreCount);
+
 
     /*
     // Output everything to match the Python version
@@ -74,35 +73,40 @@ int main(int argc, char *argv[])
     */
     return 0;    
 }
-vector<string> outputFileNameGen(string inputFileName, int coreCount)
+
+/**
+ * Generate the output file name
+ * 
+ * @param string inputFileName representing the original input file name.
+ * @param int i representing the current core counter.
+ * 
+ * @return output file name stored in a string.
+ *  
+ */
+std::string outputFileNameGen(string inputFileName, int coreNumber)
 {
-    vector<string> outputFileNames;
-    string outputFileName = "";
-    string core = "-core-";
-    string ext = ".txt";
-    cout << coreCount << " cores detected." << endl;
 
-    for(int i = 0; i < coreCount; i++)
-    {
-        string coreCounttoString = to_string(coreCount);
-        string outputFileName = inputFileName + core + coreCounttoString + ext;
+    std::string core = "-core-";
+    std::string ext = ".txt";
+    std::string coreCounttoString = to_string(coreNumber);
+    std::string outputFileName = inputFileName + core + coreCounttoString + ext;
 
-        outputFileNames.push_back(outputFileName);
-    }
+    return outputFileName;
 
-    cout << "Output File names: " << std::endl;
-
-    for(int i = 0; i < outputFileNames.size(); i++)
-    {
-        cout << outputFileNames[i] << std::endl;
-    }
-
-    return outputFileNames;
 }
+
+/**
+ * Parse all the data from original file and seperate it.
+ * 
+ * @param int coreNumber representing the current core number being processed.
+ * @param std::vector<CoreTempReading> readings representing the vector full of all unprocessed data.
+ * 
+ * @return specified cores temperature readings stored in a vector<double>.
+ *
+ */
 vector<double> coreTempContainer(int coreNumber, std::vector<CoreTempReading> readings)
 {
     vector<double> coreTemps;
-    cout << "Core Number:" << coreNumber << std::endl;
     for(int j = 0; j < readings.size(); j++)
     {
         double coreTemp = readings[j].second[coreNumber];
@@ -110,18 +114,24 @@ vector<double> coreTempContainer(int coreNumber, std::vector<CoreTempReading> re
         coreTemps.push_back(coreTemp);
     }
 
-    for(int i = 0; i < coreTemps.size(); i++)
-    {
-        cout << coreTemps[i] << std::endl;
-    }
-
     return coreTemps;
 }
-void acbMethod(std::vector<CoreTempReading> readings)
-{
 
-}
-void display()
+/**
+ * Output all of the processed data to respective text file
+ * 
+ * @param std::string outputFileName representing the output file name
+ * @param std::vector<double>& coreTemps representing the processed data
+ * 
+ */
+void outputToFile(std::string outputFileName, std::vector<double>& coreTemps)
 {
-    
+    ofstream myfile(outputFileName);
+
+    for(int j = 0; j < coreTemps.size(); j++)
+    {
+        myfile << coreTemps[j] << std::endl;
+    }
+
+    myfile.close();
 }
