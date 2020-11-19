@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
         cout << "Usage: " << argv[0] << " input_file_name" << "\n";
         return 1;
     }
-    
+
     ifstream input_temps(argv[1]);
     if (!input_temps) {
         cout << "ERROR: " << argv[1] << " could not be opened" << "\n";
@@ -49,6 +49,13 @@ int main(int argc, char *argv[])
     vector<string> outputFileNames;
     vector<double> coreTemps;
 
+    /**
+     * 
+     * Main loop that will drive program.
+     * Will iterate up to core count from input file.
+     * Note: This should be scalable to use on larger or smaller core CPU's (I think?)
+     * 
+     **/
     for(int i = 0; i < coreCount; i++)
     {
         std::string outputFileName = outputFileNameGen(inputFileName ,i);
@@ -107,6 +114,8 @@ std::string outputFileNameGen(string inputFileName, int coreNumber)
 vector<double> coreTempContainer(int coreNumber, std::vector<CoreTempReading> readings)
 {
     vector<double> coreTemps;
+
+    // For loop that will iterate through unprocessed data vector and push specific core number's data to push into new vector.
     for(int j = 0; j < readings.size(); j++)
     {
         double coreTemp = readings[j].second[coreNumber];
@@ -128,6 +137,7 @@ void outputToFile(std::string outputFileName, std::vector<double>& coreTemps)
 {
     ofstream myfile(outputFileName);
 
+    // For loop that will iterate through coreTemps vector and print them to file.
     for(int j = 0; j < coreTemps.size(); j++)
     {
         myfile << coreTemps[j] << std::endl;
