@@ -24,14 +24,21 @@ using namespace std;
  * 
  */
 
-void outputToFile(int, std::string, std::vector<double>&, double&, double&, std::vector<pair<double,float>>&);
+void outputToFile(int, std::string, std::vector<pair<double,double>>&);
 std::string outputFileNameGen(string, int);
 vector<double> coreTempContainer(int, std::vector<CoreTempReading>);
-void globalLeastSquaresApproximation(int, double&, double&, std::vector<double>&);
-void piecewiseLinearInterpolation(int, std::vector<double>&, std::vector<pair<double,float>>&);
+void globalLeastSquaresApproximation(int, std::vector<double>&);
+void piecewiseLinearInterpolation(int, std::vector<double>&, std::vector<pair<double,double>>&);
 double cOfZeroCalc(double, double, double);
-float cOfOneCalc(double, double, double, double);
+double cOfOneCalc(double, double, double, double);
+void resetVectorOfVectors();
+void gaussianElimination();
 
+vector<vector<double>> AcB
+{
+    {0, 0, 0},
+    {0, 0, 0}
+};
 
 //------------------------------------------------------------------------------
 int main(int argc, char *argv[])
@@ -54,10 +61,9 @@ int main(int argc, char *argv[])
     auto readings = parse_raw_temps<std::vector<CoreTempReading>>(input_temps);
     
     int coreCount = readings[0].second.size();
-    vector<pair<double,float>> pieceLinInt;
+    vector<pair<double,double>> pieceLinInt;
     vector<double> coreTemps;
-    double slope;
-    double intercept;
+
 
     /**
      * 
@@ -71,9 +77,10 @@ int main(int argc, char *argv[])
         coreTemps = coreTempContainer(i, readings);
         int sizeOfCoreTemps = (coreTemps.size() - 1);
         std::string outputFileName = outputFileNameGen(inputFileName ,i);
-        globalLeastSquaresApproximation(sizeOfCoreTemps, slope, intercept, coreTemps);
+        globalLeastSquaresApproximation(sizeOfCoreTemps, coreTemps);
         piecewiseLinearInterpolation(sizeOfCoreTemps, coreTemps, pieceLinInt);
-        outputToFile(sizeOfCoreTemps, outputFileName, coreTemps, slope, intercept, pieceLinInt);
+        outputToFile(sizeOfCoreTemps, outputFileName, pieceLinInt);
+        resetVectorOfVectors();
         pieceLinInt.clear();
     }
 
@@ -136,11 +143,13 @@ vector<double> coreTempContainer(int coreNumber, std::vector<CoreTempReading> re
  * @param std::vector<pair<double,float>>& pieceLinInt representing the vector containing all of the piecewise polynomial values.
  * 
  */
-void outputToFile(int sizeOfCoreTemps, std::string outputFileName, std::vector<double>& coreTemps, double& slope, double& intercept, std::vector<pair<double, float>>& pieceLinInt)
+void outputToFile(int sizeOfCoreTemps, std::string outputFileName, std::vector<pair<double, double>>& pieceLinInt)
 {
     ofstream myfile(outputFileName);
     std::string outputX = " <= x <";
     int y_i = 0;
+    int xk;
+    int xkplusone;
 
     myfile << std::setw(5) << "xk" << std::setw(5) << " <= x <" << std::setw(8) <<  "xk+1;" << " y_i" << std::setw(7) << "=" << std::setw(11) << "c0 " << "     +" << "        c1x;" << " type" << std::endl;
 
@@ -149,19 +158,24 @@ void outputToFile(int sizeOfCoreTemps, std::string outputFileName, std::vector<d
     for(int z = 0; z < sizeOfCoreTemps; z++)
     {
         ios init(NULL);
-        int xk = (z*30);
-        int xkplusone = ((z+1)*30);
+        xk = (z*30);
+        xkplusone = ((z+1)*30);
         myfile << fixed << setprecision(4);
         myfile << std::setw(5) << xk << outputX << std::setw(7) << xkplusone << ";" << std::setw(2) << " y_";
         myfile << setw(7);
         myfile << std::left << y_i;
         myfile << "=";
-        //myfile.copyfmt(init);
         myfile << setw(15);
         myfile << std::right << pieceLinInt[z].first << " +" << setw(10) << pieceLinInt[z].second << "x; interpolation" << std::endl;
         y_i++;
         myfile.copyfmt(init);
     }
+
+    xk = (0);
+    xkplusone = (sizeOfCoreTemps * 30);
+    myfile << std::setw(5) << xk << outputX << std::setw(7) << xkplusone << ";" << std::setw(2) << " y_" << setw(7) << std::left << y_i << "=" << setw(15) << std::right << AcB[0][2] << " +" << setw(10) << setprecision(4) << AcB[1][2] << "x; global least squares approximation" << std::endl;
+
+
     pieceLinInt.clear();
     myfile.close();
 }
@@ -171,29 +185,59 @@ void outputToFile(int sizeOfCoreTemps, std::string outputFileName, std::vector<d
  * Calculates the global least squares approximation for all temperatures pulled from core.
  * 
  * @param int sizeOfCoreTemps representing the size of core temperature vector. (I only did this to avoid warning flags being thrown by Ubuntu..comparing int to long).
- * @param double& slope representing the slope of the polynomial.
- * @param double& intercept representing the intercept of the polynomial.
  * @param std::vector<double>& coreTemps representing the vector containing the core temperatures.
  * 
  */
-void globalLeastSquaresApproximation(int sizeOfCoreTemps, double& slope, double& intercept, std::vector<double>& coreTemps)
+void globalLeastSquaresApproximation(int sizeOfCoreTemps, std::vector<double>& coreTemps)
 {
-    double xsum = 0;
-    double x2sum = 0;
-    double ysum = 0;
-    double xysum = 0;
-
     for(int i = 0; i < sizeOfCoreTemps; i++)
     {
-        xsum = xsum+coreTemps[i];
-        ysum = ysum+i;
-        x2sum = x2sum+pow(coreTemps[i], 2);
-        xysum = xysum+coreTemps[i]*i;
+        AcB[0][0] = AcB[0][0] + 1;
+        AcB[0][1] = (AcB[0][1] + (i*30));
+        AcB[0][2] = (AcB[0][2] + coreTemps[i]);
+        AcB[1][2] = (i * coreTemps[i]); 
     }
+    AcB[1][0] = AcB[0][1];
+    AcB[1][1] = pow(AcB[1][0], 2);
+    gaussianElimination();
 
-    slope = (sizeOfCoreTemps * xysum - xsum * ysum)/(sizeOfCoreTemps * x2sum - xsum * xsum);
-    intercept = (x2sum * ysum - xsum * xysum)/(x2sum * sizeOfCoreTemps - xsum * xsum);
+}
 
+/**
+ * Perform gaussian elimination on matrix to get reduced echelon form
+ * 
+ * Will modify the AcB vector of vector<double>
+ */
+void gaussianElimination()
+{
+    const int nrows = 2;
+    const int ncol = 3;
+
+    int lead = 0;
+
+    while(lead < nrows){
+        double d, m;
+
+        for(int r = 0; r < nrows; r++)
+        {
+            d = AcB[lead][lead];
+            m = AcB[r][lead] / AcB[lead][lead];
+
+            for(int c = 0; c < ncol; c++)
+            {
+                if(r == lead)
+                {
+                    AcB[r][c] /= d;
+                }
+                else
+                {
+                    AcB[r][c] -= AcB[lead][c] * m;
+                }
+                
+            }
+        }
+        lead++;
+    }
 }
 
 /**
@@ -205,10 +249,9 @@ void globalLeastSquaresApproximation(int sizeOfCoreTemps, double& slope, double&
  * @param std::vector<pair<double,float>>& pieceLinInt representing the vector containing all of the piecewise polynomial values.
  * 
  */
-void piecewiseLinearInterpolation(int sizeOfCoreTemps, std::vector<double>& coreTemps, std::vector<pair<double,float>>& pieceLinInt)
+void piecewiseLinearInterpolation(int sizeOfCoreTemps, std::vector<double>& coreTemps, std::vector<pair<double,double>>& pieceLinInt)
 {
-    double x0, x1, f0, f1, c0;
-    float c1;
+    double x0, x1, f0, f1, c0, c1;
 
     for(int i = 0; i < sizeOfCoreTemps; i++)
     {
@@ -253,10 +296,25 @@ double cOfZeroCalc(double x0, double f0, double c1)
  * @return float c1
  * 
  */
-float cOfOneCalc(double x0, double f0, double x1, double f1)
+double cOfOneCalc(double x0, double f0, double x1, double f1)
 {
     // Slope calculation
     double c1 = ((f1-f0)/(x1-x0));
 
     return c1;
+}
+
+/**
+ * Will reset the vector AcB to a vector full of zeros.
+ * 
+ */
+void resetVectorOfVectors()
+{
+    for(int i = 0; i < 2; i++)
+    {
+        for(int j = 0; j < 3; j++)
+        {
+            AcB[i][j] = 0;
+        }
+    }
 }
